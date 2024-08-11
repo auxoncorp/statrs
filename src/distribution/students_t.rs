@@ -6,6 +6,8 @@ use crate::{Result, StatsError};
 use rand::Rng;
 use std::f64;
 
+use super::CheckedContinuousCDF;
+
 /// Implements the [Student's
 /// T](https://en.wikipedia.org/wiki/Student%27s_t-distribution) distribution
 ///
@@ -206,6 +208,74 @@ impl ContinuousCDF<f64, f64> for StudentsT {
         // because scale is positive: loc + scale * t is strictly monotonic function
         // = μ + σ inf { t | F_X(t) >= p } = μ + σ F_X^{-1}(p)
         self.location + self.scale * y
+    }
+}
+
+impl CheckedContinuousCDF<f64, f64> for StudentsT {
+    /// Calculates the cumulative distribution function for the student's
+    /// t-distribution
+    /// at `x`
+    ///
+    /// # Formula
+    ///
+    /// ```text
+    /// if x < μ {
+    ///     (1 / 2) * I(t, v / 2, 1 / 2)
+    /// } else {
+    ///     1 - (1 / 2) * I(t, v / 2, 1 / 2)
+    /// }
+    /// ```
+    ///
+    /// where `t = v / (v + k^2)`, `k = (x - μ) / σ`, `μ` is the location,
+    /// `σ` is the scale, `v` is the freedom, and `I` is the regularized
+    /// incomplete beta function
+    fn checked_cdf(&self, x: f64) -> Result<f64> {
+        // self.scale is checked to be nonzero at construction
+        if self.freedom.is_infinite() {
+            Ok(super::normal::cdf_unchecked(x, self.location, self.scale))
+        } else {
+            let k = (x - self.location) / self.scale;
+            let h = self.freedom / (self.freedom + k * k);
+            let ib = 0.5 * beta::checked_beta_reg(self.freedom / 2.0, 0.5, h)?;
+            if x <= self.location {
+                Ok(ib)
+            } else {
+                Ok(1.0 - ib)
+            }
+        }
+    }
+
+    /// Calculates the cumulative distribution function for the student's
+    /// t-distribution
+    /// at `x`
+    ///
+    /// # Formula
+    ///
+    /// ```text
+    /// if x < μ {
+    ///     1 - (1 / 2) * I(t, v / 2, 1 / 2)
+    /// } else {
+    ///     (1 / 2) * I(t, v / 2, 1 / 2)
+    /// }
+    /// ```
+    ///
+    /// where `t = v / (v + k^2)`, `k = (x - μ) / σ`, `μ` is the location,
+    /// `σ` is the scale, `v` is the freedom, and `I` is the regularized
+    /// incomplete beta function
+    fn checked_sf(&self, x: f64) -> Result<f64> {
+        // self.scale is checked to be nonzero at construction
+        if self.freedom.is_infinite() {
+            Ok(super::normal::sf_unchecked(x, self.location, self.scale))
+        } else {
+            let k = (x - self.location) / self.scale;
+            let h = self.freedom / (self.freedom + k * k);
+            let ib = 0.5 * beta::checked_beta_reg(self.freedom / 2.0, 0.5, h)?;
+            if x <= self.location {
+                Ok(1.0 - ib)
+            } else {
+                Ok(ib)
+            }
+        }
     }
 }
 

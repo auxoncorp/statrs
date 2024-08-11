@@ -144,6 +144,40 @@ pub trait ContinuousCDF<K: Float, T: Float>: Min<K> + Max<K> {
     }
 }
 
+/// The `ContinuousCDF` trait is used to specify an interface for univariate
+/// distributions for which cdf float arguments are sensible.
+pub trait CheckedContinuousCDF<K: Float, T: Float>: Min<K> + Max<K> {
+    /// Returns the cumulative distribution function calculated
+    /// at `x` for a given distribution. May panic depending
+    /// on the implementor.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use statrs::distribution::{ContinuousCDF, Uniform};
+    ///
+    /// let n = Uniform::new(0.0, 1.0).unwrap();
+    /// assert_eq!(0.5, n.cdf(0.5));
+    /// ```
+    fn checked_cdf(&self, x: K) -> Result<T>;
+
+    /// Returns the survival function calculated
+    /// at `x` for a given distribution. May panic depending
+    /// on the implementor.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use statrs::distribution::{ContinuousCDF, Uniform};
+    ///
+    /// let n = Uniform::new(0.0, 1.0).unwrap();
+    /// assert_eq!(0.5, n.sf(0.5));
+    /// ```
+    fn checked_sf(&self, x: K) -> Result<T> {
+        Ok(T::one() - self.checked_cdf(x)?)
+    }
+}
+
 /// The `DiscreteCDF` trait is used to specify an interface for univariate
 /// discrete distributions.
 pub trait DiscreteCDF<K: Sized + Num + Ord + Clone + NumAssignOps, T: Float>:
